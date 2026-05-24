@@ -17,40 +17,51 @@ async function get() {
                 const json_data = await res.json();
                 console.debug(json_data);
 
-                // table作成
-                const table = document.createElement('table');
-
-                // thead作成
-                const thead = document.createElement('thead');
-                const Htr = document.createElement('tr');
-
-                ['日付', '曜日', '時間', '予定'].forEach(text => {
-                    const Hth = document.createElement('th');
-                    Hth.textContent = text;
-                    Htr.appendChild(Hth);
-                });
-
-                thead.appendChild(Htr);
-                table.appendChild(thead);
-
                 // tbody作成
-                const tbody = document.createElement('tbody');
+                const tbody = document.getElementById('tbody');
 
                 json_data.forEach(row => {
                     const tr = document.createElement('tr');
 
-                    row.forEach(col => {
+                    row.forEach((col, i) => {
                         console.debug(col);
                         const td = document.createElement('td');
                         td.textContent = col;
+
+                        switch (i) {
+                            case 0:
+                                if (col == '') {
+                                    td.textContent = col;
+                                } else {
+                                    td.textContent = `${col}月`;
+                                }
+
+                                break;
+
+                            case 1:
+                                if (col == '') {
+                                    td.textContent = col;
+                                } else {
+                                    td.textContent = `${col}日`;
+                                }
+
+                                break;
+
+                            case 3:
+                                td.textContent = col.replace(/~/g, '\n~');
+                                break;
+
+                            default:
+                                td.textContent = col;
+                                break;
+                        }
+
                         tr.appendChild(td);
                     });
 
                     tbody.appendChild(tr);
                 });
 
-                table.appendChild(tbody);
-                document.getElementById('schedule').appendChild(table);
                 return;
             }
         } catch (error) {
