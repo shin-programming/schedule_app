@@ -1,35 +1,216 @@
 <!DOCTYPE html>
-<html lang="ja">
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" href="img/icon.png" type="image/png">
+        <link rel="apple-touch-icon" href="img/icon.png">
+        <title>予定表</title>
+        <style>
+            html, body {
+                top: 0; left: 0;
+                margin: 0px;
+                overflow-x: hidden;
+                background-color: #ccc;
+            }
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
-    <title>予定表</title>
-</head>
+            body::-webkit-scrollbar { width: 3px; }
+            body::-webkit-scrollbar-track { background: transparent; }
 
-<body>
-    <h1>予定表</h1>
-    <button id="reload">更新</button>
-    <center>
-        <div id="schedule">
-            <table>
-                <thead>
-                    <tr>
-                        <th colspan="2">日付</th>
-                        <th>曜日</th>
-                        <th>時間</th>
-                        <th>予定</th>
-                    </tr>
-                </thead>
-                <tbody id="tbody"></tbody>
-            </table>
+            body::-webkit-scrollbar-thumb {
+                border-radius: 180px;
+                background-color: #77f;
+            }
+
+            body::-webkit-scrollbar-thumb:hover { background-color: #55f }
+            h1 { margin-left: calc((100% - 98.5%) / 2); }
+
+            #reload {
+                width: 100px; height: 30px;
+                color: #000;
+                border-radius: 7px;
+                margin-bottom: 7px;
+                background-color: #aaf;
+                margin-left: calc((100% - 98.5%) / 2);
+            }
+
+            #reload:hover {
+                background-color: #77f;
+                transition: background-color .1s;
+            }
+
+            #schedule {
+                top: 0; left: 0;
+                width: 100vw; height: auto;
+                margin: 0;
+            }
+
+            table {
+                width: 98.5%; height: 34px;
+                margin: 0;
+                color: #000;
+                border-spacing: 0;
+                border-radius: 7px;
+                background-color: #fff;
+            }
+
+            table tr:nth-child(even) { background-color: #eef; }
+
+            thead th {
+                color: #eee;
+                background-color: #55f;
+                border: 1px solid #66f;
+            }
+
+            table th:last-child { border-radius: 0 7px 0 0; }
+            table th:first-child { border-radius: 7px 0 0 0; }
+
+            table td {
+                border-right: 1px solid #000;
+                border-bottom: 1px solid #000;
+            }
+
+            table tbody tr { transition: background-color .1s; }
+            table tbody tr:hover { background-color: #aaf; }
+
+            table tbody td:first-child {
+                text-align: center;
+                border-left: 1px solid #000;
+            }
+
+            table td:nth-child(2) { text-align: center; }
+            table tbody td:nth-child(1) { width: 13%; }
+            table tbody td:nth-child(2) { width: 13%; }
+            table thead th:nth-child(2) { width: 12%; }
+            table tbody td:nth-child(3) { text-align: center; }
+            table tbody td:nth-child(4) { width: auto; }
+            table tr:last-child td:last-child { border-radius: 0 0 7px 0; }
+            table tr:last-child td:first-child { border-radius: 0 0 0 7px;  }
+
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+
+            #loading {
+                top: 0; left: 0;
+                width: 100vw; height: 100vh;
+                display: flex;
+                z-index: 9999;
+                position: fixed;
+                align-items: center;
+                justify-content: center;
+                background: #00000080;
+            }
+
+            #spinner {
+                width: 34px; height: 34px;
+                border-radius: 50%;
+                border: 7px solid #fff;
+                border-top: 7px solid #77f;
+                animation: spin 0.7s linear infinite;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>予定表</h1>
+        <button id="reload">更新</button>
+        <center>
+            <div id="schedule">
+                <table>
+                    <thead>
+                        <tr>
+                            <th colspan="2">日付</th>
+                            <th>曜日</th>
+                            <th>時間</th>
+                            <th>予定</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+            </div>
+        </center>
+        <div id="loading">
+            <div id="spinner"></div>
         </div>
-    </center>
-    <div id="loading">
-        <div id="spinner"></div>
-    </div>
-    <script src="script.js"></script>
-</body>
+        <script>
+            const url = 'https://script.google.com/macros/s/AKfycbxSsc_yjBUP7Cvz0dsLo4Kqcm-lvVePZHuPVHVXyp4t8N4vRQ25MJR3umhEdrtL-TBh/exec';
 
+            window.addEventListener('DOMContentLoaded', async () => {
+                document.getElementById('loading').style.display = 'flex'; // ロードマーク表示
+                await get();
+                document.getElementById('loading').style.display = 'none'; // ロードマーク非表示
+            });
+
+            async function get() {
+                let retry_count = 1;
+
+                while (retry_count <= 3) {
+                    try {
+                        const res = await fetch(url);
+
+                        if (res.ok) {
+                            const json_data = await res.json();
+                            console.debug(json_data);
+
+                            // tbody作成
+                            const tbody = document.getElementById('tbody');
+
+                            json_data.forEach(row => {
+                                const tr = document.createElement('tr');
+
+                                row.forEach((col, i) => {
+                                    console.debug(col);
+                                    const td = document.createElement('td');
+                                    td.textContent = col;
+
+                                    switch (i) {
+                                        case 0:
+                                            if (col == '') {
+                                                td.textContent = col;
+                                            } else {
+                                                td.textContent = `${col}月`;
+                                            }
+
+                                            break;
+
+                                        case 1:
+                                            if (col == '') {
+                                                td.textContent = col;
+                                            } else {
+                                                td.textContent = `${col}日`;
+                                            }
+
+                                            break;
+
+                                        case 3:
+                                            td.textContent = col.replace(/~/g, '\n~');
+                                            break;
+
+                                        default:
+                                            td.textContent = col;
+                                            break;
+                                    }
+
+                                    tr.appendChild(td);
+                                });
+
+                                tbody.appendChild(tr);
+                            });
+
+                            return;
+                        }
+                    } catch (error) {
+                        alert(`読み込みエラーが発生しました。\n再試行します。\n（${retry_count}/3）`);
+                        retry_count++;
+                    }
+                }
+
+                alert('スケジュールが読み込めませんでした。\nネットワーク接続をもう一度確認の上、再試行してください。');
+                window.location.reload();
+            }
+
+            document.getElementById('reload').addEventListener('click', () => window.location.reload());
+        </script>
+    </body>
 </html>
